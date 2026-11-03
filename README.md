@@ -54,7 +54,7 @@ Nel menu c'è la sezione **Wishlist** per i prodotti da prendere (pensata per il
 - Prezzo pieno, prezzo scontato, sconto in € e in %: scrivi il prezzo scontato oppure la percentuale e l'altro si calcola.
 - Ogni cambio di prezzo finisce nello storico (tabella `wishlist_price_history`): la scheda mostra la variazione e un mini-grafico.
 - **Cronologia:** aprendo un prodotto (Modifica o 📈) vedi tutte le variazioni di prezzo e puoi eliminare quelle sbagliate: se elimini quella attuale, il prodotto torna al prezzo precedente e il grafico si aggiorna.
-- **Auto / Manuale:** sulla foto di ogni prodotto un'etichetta dice se il prezzo è *Auto* (letto dal sito e ricontrollato) o *Manuale* (Amazon, senza link, o sito non leggibile: si aggiorna con il pulsante «€»). Se un sito torna leggibile, ↻ lo rimette in automatico.
+- **Auto / Manuale:** in alto a destra sulla foto un pallino dice se il prezzo è automatico (**A** verde: letto dal sito e ricontrollato) o manuale (**M** giallo (Amazon, senza link, o sito non leggibile: si aggiorna con il pulsante «€»). Se un sito torna leggibile, ↻ lo rimette in automatico.
 - **Categorie:** le schede in alto (Tutte, Tecnologia, Shopping, …) filtrano per categoria; «Tutte» mostra tutti i prodotti insieme.
 - «Ricontrolla prezzi» rilegge i prezzi dai siti (tutti tranne Amazon).
 - **Comprato → L'ho preso a rate** apre una nuova rata già compilata con nome, prezzo e PayPal/Amazon; quando la salvi il prodotto viene segnato come comprato e collegato alla rata («Vedi la rata»).
