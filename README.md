@@ -53,6 +53,7 @@ Nel menu c'è la sezione **Wishlist** per i prodotti da prendere (pensata per il
 - **Amazon:** foto e nome vengono letti dal link, ma il **prezzo si inserisce a mano** (quello venduto da Amazon.it) con il pulsante «€» sulla scheda; finisce comunque nello storico con la variazione. «Ricontrolla prezzi» salta i prodotti Amazon. Motivo: il server che legge le pagine non è in Italia e Amazon non gli mostra sempre l'offerta di Amazon.it.
 - Prezzo pieno, prezzo scontato, sconto in € e in %: scrivi il prezzo scontato oppure la percentuale e l'altro si calcola.
 - Ogni cambio di prezzo finisce nello storico (tabella `wishlist_price_history`): la scheda mostra la variazione e un mini-grafico.
+- **Cronologia:** aprendo un prodotto (Modifica o 📈) vedi tutte le variazioni di prezzo e puoi eliminare quelle sbagliate: se elimini quella attuale, il prodotto torna al prezzo precedente e il grafico si aggiorna.
 - **Auto / Manuale:** sulla foto di ogni prodotto un'etichetta dice se il prezzo è *Auto* (letto dal sito e ricontrollato) o *Manuale* (Amazon, senza link, o sito non leggibile: si aggiorna con il pulsante «€»). Se un sito torna leggibile, ↻ lo rimette in automatico.
 - **Categorie:** le schede in alto (Tutte, Tecnologia, Shopping, …) filtrano per categoria; «Tutte» mostra tutti i prodotti insieme.
 - «Ricontrolla prezzi» rilegge i prezzi dai siti (tutti tranne Amazon).

@@ -501,6 +501,18 @@ textarea.wl-ta{height:auto;min-height:64px;padding:9px 11px;resize:vertical;font
 .wl-buy button:hover{border-color:var(--accent);background:var(--accent-soft)}
 .wl-from{background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:10px 12px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:center}
 .wl-chart{width:100%;height:auto;display:block}
+.wl-hbox{display:flex;flex-direction:column;gap:10px}
+.wl-htab td{vertical-align:middle}
+.wl-htab tr.cur td{font-weight:600}
+.wl-now{font-size:11px;font-weight:700;background:var(--accent-soft);color:var(--accent);border-radius:99px;padding:1px 7px;margin-left:4px;white-space:nowrap}
+.wl-del{width:1%;text-align:right;padding:4px 0 4px 6px!important}
+.wl-del .icon-btn{width:32px;height:32px;border-radius:9px;color:var(--muted);margin-left:auto}
+.wl-del .icon-btn:hover{color:var(--s-over);border-color:color-mix(in srgb,var(--s-over) 40%,var(--line))}
+.wl-del .icon-btn.confirm{width:auto;padding:0 10px;font-size:12.5px;font-weight:700;color:#fff;background:var(--s-over);border-color:var(--s-over)}
+.wl-hdet{border:1px solid var(--line);border-radius:14px;padding:4px 14px;background:var(--surface)}
+.wl-hdet summary{cursor:pointer;font-weight:600;font-size:14px;padding:10px 0;list-style-position:inside}
+.wl-hdet summary b{font-size:12px;background:var(--surface-2);color:var(--muted);border-radius:99px;padding:1px 8px;margin-left:4px}
+.wl-hdet[open]{padding-bottom:14px}
 .wl-tabs{display:flex;gap:8px;overflow-x:auto;padding:2px 0;scrollbar-width:none;margin-bottom:-8px}
 .wl-tabs::-webkit-scrollbar{display:none}
 .wl-tab{border:1px solid var(--line);background:var(--surface);border-radius:99px;padding:8px 14px;font-weight:600;font-size:14px;color:var(--ink-2);white-space:nowrap;display:inline-flex;gap:8px;align-items:center;flex:none;cursor:pointer}
@@ -1673,10 +1685,10 @@ async function loadWish(silent){
   try{
     const[a,b]=await Promise.all([
       sb.from("wishlist_items").select("*").order("created_at",{ascending:false}),
-      sb.from("wishlist_price_history").select("item_id,price,sale_price,recorded_at").order("recorded_at",{ascending:true})]);
+      sb.from("wishlist_price_history").select("id,item_id,price,sale_price,recorded_at").order("recorded_at",{ascending:true})]);
     if(a.error||b.error)throw(a.error||b.error);
     W.items=a.data.map(r=>Object.assign(r,{price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),discount:nOrNull(r.discount),discount_pct:nOrNull(r.discount_pct)}));
-    W.hist={};for(const r of b.data)(W.hist[r.item_id]||(W.hist[r.item_id]=[])).push({price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),recorded_at:r.recorded_at});
+    W.hist={};for(const r of b.data)(W.hist[r.item_id]||(W.hist[r.item_id]=[])).push({id:r.id,price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),recorded_at:r.recorded_at});
     W.loaded=true;W.err="";
   }catch(e){W.err=netErr(e)?"Connessione assente: riprova tra poco.":(e.message||"Errore nel caricamento");if(!silent)toast(W.err)}
   finally{W.loading=false;if(UI.view==="wishlist")render()}
@@ -1792,6 +1804,7 @@ function openWishForm(id){
     <div class="field"><label for="w_pct">Sconto %</label><input type="text" inputmode="decimal" id="w_pct" value="${i&&i.discount_pct!=null?wIn(i.discount_pct):""}" placeholder="0"><span class="hint">Scrivi il prezzo scontato oppure la percentuale</span></div>
     <div class="field"><label for="w_prio">Priorità</label><select id="w_prio" name="priority">${sel([[1,"Alta"],[2,"Media"],[3,"Bassa"]],i?i.priority:2)}</select></div>
     <div class="field full"><div class="wl-calc" id="wCalc"></div></div>
+    ${i&&(W.hist[i.id]||[]).length?`<details class="field full wl-hdet"${(W.hist[i.id]||[]).length>1?" open":""}><summary>Cronologia prezzi <b>${(W.hist[i.id]||[]).length}</b></summary><div class="wl-hbox" id="wHistBox" data-item="${esc(i.id)}">${wHistHTML(i.id)}</div></details>`:""}
     ${i?`<div class="field full"><label class="toggle-box"><span>Già comprato</span><span class="switch"><input type="checkbox" name="purchased" ${i.purchased?"checked":""}><span></span></span></label></div>`:""}
    </div><div class="err" id="wErr" hidden></div></div>
    <div class="m-foot">${i?`<button type="button" class="btn danger left" data-act="wAskDel" data-id="${i.id}">${ico("trash")} Elimina</button>`:""}<button type="button" class="btn ghost" data-act="close">Annulla</button><button type="submit" class="btn primary" id="wSave">${i?"Salva modifiche":"Aggiungi"}</button></div>
@@ -1879,10 +1892,11 @@ async function wDoDel(id){const{error}=await sb.from("wishlist_items").delete().
   if(error){toast(error.message);return}closeModal();toast("Prodotto eliminato");loadWish()}
 
 /* ---------- storico ---------- */
-function openWishHist(id){
-  const i=wFind(id);if(!i)return;const h=W.hist[id]||[];
+// grafico + cronologia delle variazioni, con eliminazione delle righe sbagliate
+function wHistHTML(id){
+  const h=W.hist[id]||[];
   const pts=h.map(r=>wEff(r)).filter(v=>v!=null);let chart;
-  if(pts.length<2)chart=`<p class="muted" style="margin:0;font-size:13.5px">Il grafico compare dal primo cambio di prezzo. Usa ${ico("refresh")} sulla scheda per ricontrollarlo dal sito.</p>`;
+  if(pts.length<2)chart=`<p class="muted" style="margin:0;font-size:13.5px">Il grafico compare dal primo cambio di prezzo.</p>`;
   else{const Wd=600,H=170,L=56,R=14,T=14,B=26,min=Math.min(...pts),max=Math.max(...pts),sp=max-min||1;
     const x=k=>L+k/(pts.length-1)*(Wd-L-R),y=v=>T+(H-T-B)*(1-(v-min)/sp);
     chart=`<svg class="wl-chart" viewBox="0 0 ${Wd} ${H}" role="img" aria-label="Andamento del prezzo">
@@ -1890,14 +1904,38 @@ function openWishHist(id){
       <text x="${L-8}" y="${y(max)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${moneyR(max)}</text><text x="${L-8}" y="${y(min)+4}" text-anchor="end" font-size="12" fill="var(--muted)">${moneyR(min)}</text>
       <polyline points="${pts.map((v,k)=>x(k)+","+y(v)).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>
       ${pts.map((v,k)=>`<circle cx="${x(k)}" cy="${y(v)}" r="3.5" fill="var(--accent)"><title>${money(v)}</title></circle>`).join("")}</svg>`}
-  const rows=h.slice().reverse().map((r,k,a)=>{const nx=a[k+1];const c=wEff(r),p=nx?wEff(nx):null;let v="—";
+  const one=h.length<=1;
+  const rows=h.slice().reverse().map((r,k,a)=>{const nx=a[k+1];const c=wEff(r),p=nx?wEff(nx):null;let v=nx?"—":"inizio";
     if(c!=null&&p!=null){const d=Math.round((c-p)*100)/100;v=d===0?"=":`<span class="wl-var ${d<0?"down":"up"}">${d<0?"▼":"▲"} ${money(Math.abs(d))}</span>`}
     const t=new Date(r.recorded_at);
-    return `<tr><td>${t.getDate()} ${MSHORT[t.getMonth()]} ${t.getFullYear()!==+TODAY.slice(0,4)?t.getFullYear()+" ":""}${pad(t.getHours())}:${pad(t.getMinutes())}</td><td class="num">${r.price!=null?money(r.price):"—"}</td><td class="num">${r.sale_price!=null?money(r.sale_price):"—"}</td><td class="num">${v}</td></tr>`}).join("");
-  openModal(`${mHead("Storico prezzi")}<div class="m-body"><p style="margin:0;font-weight:600">${esc(i.title)}</p>${chart}
-    <div style="overflow:auto"><table class="inc" style="width:100%"><thead><tr><th>Data</th><th style="text-align:right">Pieno</th><th style="text-align:right">Scontato</th><th style="text-align:right">Variazione</th></tr></thead>
-    <tbody>${rows||`<tr><td colspan="4" class="muted">Nessun dato</td></tr>`}</tbody></table></div></div>
+    return `<tr${k===0?' class="cur"':""}><td>${t.getDate()} ${MSHORT[t.getMonth()]} ${t.getFullYear()!==+TODAY.slice(0,4)?t.getFullYear()+" ":""}${pad(t.getHours())}:${pad(t.getMinutes())}${k===0?' <span class="wl-now">attuale</span>':""}</td>
+      <td class="num">${r.price!=null?money(r.price):"—"}</td><td class="num">${r.sale_price!=null?money(r.sale_price):"—"}</td><td class="num">${v}</td>
+      <td class="wl-del">${one||r.id==null?"":`<button type="button" class="icon-btn" data-act="wHDel" data-hid="${r.id}" data-item="${esc(id)}" aria-label="Elimina questa variazione" title="Elimina questa variazione">${ico("trash")}</button>`}</td></tr>`}).join("");
+  return `${chart}
+    <div style="overflow:auto"><table class="inc wl-htab" style="width:100%"><thead><tr><th>Data</th><th style="text-align:right">Pieno</th><th style="text-align:right">Scontato</th><th style="text-align:right">Variazione</th><th></th></tr></thead>
+    <tbody>${rows||`<tr><td colspan="5" class="muted">Nessun dato</td></tr>`}</tbody></table></div>
+    ${one?"":`<p class="muted" style="margin:0;font-size:12.5px">Hai sbagliato a scrivere un prezzo? Elimina la riga: se è quella attuale, il prodotto torna al prezzo precedente.</p>`}`;
+}
+function openWishHist(id){
+  const i=wFind(id);if(!i)return;
+  openModal(`${mHead("Storico prezzi")}<div class="m-body"><p style="margin:0;font-weight:600">${esc(i.title)}</p><div class="wl-hbox" id="wHistBox" data-item="${esc(id)}">${wHistHTML(id)}</div></div>
     <div class="m-foot"><button class="btn" data-act="close">Chiudi</button></div>`,true);
+}
+async function wHistDelete(btn){
+  // primo tocco: chiede conferma; secondo tocco: elimina
+  if(!btn.classList.contains("confirm")){
+    document.querySelectorAll('[data-act="wHDel"].confirm').forEach(b=>{b.classList.remove("confirm");b.innerHTML=ico("trash")});
+    btn.classList.add("confirm");btn.innerHTML="Elimina?";return}
+  const id=btn.dataset.item;btn.disabled=true;
+  const{data,error}=await sb.rpc("wishlist_delete_history",{hid:+btn.dataset.hid});
+  if(error){btn.disabled=false;toast(netErr(error)?"Connessione assente: riprova":(error.message||"Errore"));return}
+  await loadWish(true);
+  const box=document.getElementById("wHistBox");if(box&&box.dataset.item===id)box.innerHTML=wHistHTML(id);
+  // modulo di modifica aperto: aggiorna i prezzi mostrati
+  const f=document.getElementById("wishForm");
+  if(f&&f.querySelector("[name=wid]").value===id&&data){
+    document.getElementById("w_price").value=wIn(nOrNull(data.price));document.getElementById("w_sale").value=wIn(nOrNull(data.sale_price));wCalc("w_sale")}
+  toast(data?`Variazione eliminata · prezzo attuale ${money(wEff({price:nOrNull(data.price),sale_price:nOrNull(data.sale_price)}))}`:"Variazione eliminata");
 }
 
 /* ---------- ricontrolla prezzo dal sito ---------- */
@@ -1994,6 +2032,7 @@ document.addEventListener("click",e=>{
   switch(a){
     case"nav":UI.view=b.dataset.v;if(b.dataset.tab){UI.pf.tab=b.dataset.tab}else if(UI.view==="payments"){UI.pf.tab="tutti"}closeModal();UI.search="";render();window.scrollTo(0,0);if(UI.view==="payments")jumpToday();break;
     case"add":if(UI.view==="wishlist"&&!b.dataset.kind&&wOn()){openWishForm();break}openForm(b.dataset.kind||(UI.view==="rate"?"rata":"sub"));break;
+    case"wHDel":wHistDelete(b);break;
     case"wAdd":openWishForm();break;case"wEdit":openWishForm(b.dataset.id);break;case"wHist":openWishHist(b.dataset.id);break;
     case"wScrape":wScrape();break;case"wAskDel":wAskDel(b.dataset.id);break;case"wDoDel":wDoDel(b.dataset.id);break;
     case"wCat":W.cat=b.dataset.v||"";render();requestAnimationFrame(()=>{const t=document.querySelector(".wl-tab.on");if(t)t.scrollIntoView({block:"nearest",inline:"center"})});break;

@@ -46,3 +46,11 @@ alter table public.wishlist_price_history enable row level security;
 -- trigger: ogni cambio di prezzo (o nuovo prodotto) viene registrato nello storico
 --   wishlist_items_touch      BEFORE UPDATE  -> aggiorna updated_at
 --   wishlist_items_price_log  AFTER INSERT OR UPDATE -> inserisce in wishlist_price_history
+
+-- origine del prezzo: 'auto' letto dal sito, 'manual' inserito a mano
+alter table public.wishlist_items add column if not exists price_source text check (price_source in ('auto','manual'));
+
+-- elimina una variazione dello storico (es. prezzo scritto male);
+-- se era la più recente, il prodotto torna al prezzo precedente senza creare nuove righe nello storico
+--   public.wishlist_delete_history(hid bigint) returns json   (security invoker, solo utenti loggati)
+--   il trigger wishlist_log_price_after() salta la registrazione se wishlist.skip_log = 'on'
