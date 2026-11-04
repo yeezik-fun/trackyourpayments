@@ -520,6 +520,21 @@ textarea.wl-ta{height:auto;min-height:64px;padding:9px 11px;resize:vertical;font
 .wl-tab:hover{color:var(--ink);border-color:color-mix(in srgb,var(--accent) 40%,var(--line))}
 .wl-tab b{font-size:12px;font-weight:700;background:var(--surface-2);color:var(--muted);border-radius:99px;padding:1px 8px;font-variant-numeric:tabular-nums}
 .wl-tab.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.wl-tab-edit{border-style:dashed;color:var(--muted)}
+.wl-tab-edit .ico{width:15px;height:15px}
+.wl-catadd{display:flex;gap:8px}
+.wl-catadd input{flex:1}
+.wl-catlist{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.wl-catlist li{display:flex;align-items:center;gap:8px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.wl-catlist li input{flex:1;height:36px;border-color:transparent;background:transparent;font-weight:600}
+.wl-catlist li input:hover{border-color:var(--line)}
+.wl-catord{display:flex;flex-direction:column;gap:2px}
+.wl-catord .icon-btn{width:26px;height:17px;border-radius:5px;border:0;background:var(--surface-2)}
+.wl-catord .icon-btn .ico{width:12px;height:12px}
+.wl-catord .icon-btn:disabled{opacity:.3}
+.wl-catn{font-size:12.5px;white-space:nowrap}
+.wl-catdel{width:34px;height:34px;color:var(--muted)}
+.wl-catdel.confirm{width:auto;padding:0 10px;font-size:12.5px;font-weight:700;color:#fff;background:var(--s-over);border-color:var(--s-over)}
 .wl-tab.on b{background:color-mix(in srgb,var(--accent-ink) 22%,transparent);color:var(--accent-ink)}
 
 .spin .ico{animation:wlspin 1s linear infinite}@keyframes wlspin{to{transform:rotate(360deg)}}
@@ -947,6 +962,7 @@ const P={
   trend:'<path d="m3 17 6-6 4 4 8-8"/><path d="M14 7h7v7"/>',flag:'<path d="M4 22V4M4 4h13l-2 4 2 4H4"/>',pie:'<path d="M21 12A9 9 0 1 1 12 3v9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/>',
   wallet:'<path d="M3 7a2 2 0 0 1 2-2h13v4"/><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M16 13.5h2"/>',
   pause:'<rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/>',play:'<path d="M7 4.5v15l12-7.5z"/>',
+  chevU:'<path d="m6 15 6-6 6 6"/>',chevD:'<path d="m6 9 6 6 6-6"/>',
   gift:'<rect x="3" y="8" width="18" height="13" rx="2"/><path d="M12 8v13M3 12.5h18M12 8S10.5 3.5 8 3.5a2.25 2.25 0 0 0 0 4.5zM12 8s1.5-4.5 4-4.5a2.25 2.25 0 0 1 0 4.5z"/>',
   refresh:'<path d="M20 11a8 8 0 0 0-14.6-4.5M4 3.5v4h4"/><path d="M4 13a8 8 0 0 0 14.6 4.5M20 20.5v-4h-4"/>',
   ext:'<path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
@@ -1690,7 +1706,7 @@ async function loadWish(silent){
     if(a.error||b.error)throw(a.error||b.error);
     W.items=a.data.map(r=>Object.assign(r,{price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),discount:nOrNull(r.discount),discount_pct:nOrNull(r.discount_pct)}));
     W.hist={};for(const r of b.data)(W.hist[r.item_id]||(W.hist[r.item_id]=[])).push({id:r.id,price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),recorded_at:r.recorded_at});
-    W.loaded=true;W.err="";
+    W.loaded=true;W.err="";wSyncCats();
   }catch(e){W.err=netErr(e)?"Connessione assente: riprova tra poco.":(e.message||"Errore nel caricamento");if(!silent)toast(W.err)}
   finally{W.loading=false;if(UI.view==="wishlist")render()}
 }
@@ -1723,8 +1739,8 @@ function vWishlist(){
   const NOCAT="__none",catOf=i=>i.category||NOCAT,catName=k=>k===NOCAT?"Senza categoria":k;
   const vis=W.items.filter(i=>W.showBought||!i.purchased);
   const counts={};for(const i of vis)counts[catOf(i)]=(counts[catOf(i)]||0)+1;
-  const catKeys=Object.keys(counts).sort((a,b)=>a===NOCAT?1:b===NOCAT?-1:a.localeCompare(b));
-  if(W.cat&&!counts[W.cat])W.cat="";
+  const catKeys=wCats().concat(Object.keys(counts).filter(k=>k!==NOCAT&&!wCats().includes(k))).concat(counts[NOCAT]?[NOCAT]:[]);
+  if(W.cat&&!catKeys.includes(W.cat))W.cat="";
   const inCat=i=>!W.cat||catOf(i)===W.cat;
   const todo=W.items.filter(i=>!i.purchased&&inCat(i));
   const full=todo.reduce((s,i)=>s+(i.price??i.sale_price??0),0),now=todo.reduce((s,i)=>s+(wEff(i)??0),0);
@@ -1741,9 +1757,10 @@ function vWishlist(){
     <div class="kpi"><span class="eyebrow">Prezzo pieno</span><span class="val">${money(full)}</span><span class="sub">${todo.length===1?"1 prodotto da prendere":todo.length+" prodotti da prendere"}${W.cat?" in "+esc(catName(W.cat)):""}</span></div>
     <div class="kpi"><span class="eyebrow">Con gli sconti</span><span class="val">${money(now)}</span><span class="sub">quanto pagheresti oggi</span></div>
     <div class="kpi"><span class="eyebrow">Risparmio</span><span class="val wl-green">${money(full-now)}</span><span class="sub">${full>0&&full>now?`il ${Math.round((full-now)/full*100)}% in meno`:full>0?"ancora nessuno sconto":"aggiungi i prezzi"}</span></div></div>
-  ${catKeys.length?`<div class="wl-tabs" role="tablist" aria-label="Categorie">
+  ${W.items.length||catKeys.length?`<div class="wl-tabs" role="tablist" aria-label="Categorie">
     <button class="wl-tab ${!W.cat?"on":""}" data-act="wCat" data-v="" role="tab" aria-selected="${!W.cat}">Tutte <b>${vis.length}</b></button>
-    ${catKeys.map(k=>`<button class="wl-tab ${W.cat===k?"on":""}" data-act="wCat" data-v="${esc(k)}" role="tab" aria-selected="${W.cat===k}">${esc(catName(k))} <b>${counts[k]}</b></button>`).join("")}</div>`:""}
+    ${catKeys.map(k=>`<button class="wl-tab ${W.cat===k?"on":""}" data-act="wCat" data-v="${esc(k)}" role="tab" aria-selected="${W.cat===k}">${esc(catName(k))} <b>${counts[k]||0}</b></button>`).join("")}
+    <button class="wl-tab wl-tab-edit" data-act="wCats" title="Crea, rinomina e ordina le categorie">${ico("edit")} Categorie</button></div>`:""}
   <div class="panel wl-bar">
     <input type="search" id="w_q" data-wf="q" placeholder="Cerca nella wishlist…" value="${esc(W.q)}" aria-label="Cerca nella wishlist">
     <select data-wf="sort" aria-label="Ordina">${opt([["pct","Sconto più alto"],["prio","Priorità"],["drop","Calo di prezzo"],["recent","Aggiunti di recente"],["priceAsc","Prezzo crescente"],["priceDesc","Prezzo decrescente"]],W.sort)}</select>
@@ -1751,7 +1768,7 @@ function vWishlist(){
     <span style="flex:1"></span>
     <button class="btn" data-act="wRefreshAll" ${W.busy?"disabled":""}>${ico("refresh")} <span id="wRefLbl">Ricontrolla prezzi</span></button></div>
   ${!W.items.length?`<div class="panel">${emptyBox("La wishlist è vuota","Incolla il link di un prodotto: foto, nome e prezzo vengono letti in automatico.",`<button class="btn primary" data-act="wAdd">${ico("plus")} Aggiungi prodotto</button>`)}</div>`
-   :!list.length?`<div class="panel">${emptyBox("Nessun prodotto","Prova a cambiare ricerca o filtri.")}</div>`
+   :!list.length?`<div class="panel">${W.cat&&!q&&!W.items.some(i=>catOf(i)===W.cat)?emptyBox(`Nessun prodotto in «${esc(catName(W.cat))}»`,"Aggiungi il primo prodotto di questa categoria.",`<button class="btn primary" data-act="wAdd">${ico("plus")} Aggiungi prodotto</button>`):emptyBox("Nessun prodotto","Prova a cambiare ricerca o filtri.")}</div>`
    :`<div class="cards wl-cards">${list.map(wCard).join("")}</div>`}`;
 }
 function wCard(i){
@@ -1781,11 +1798,69 @@ function wCard(i){
   </article>`;
 }
 
+/* ---------- categorie della wishlist ---------- */
+// elenco tuo, separato dalle categorie di rate e subscription; salvato in S.wishCats e sincronizzato
+const wCats=()=>Array.isArray(S.wishCats)?S.wishCats:[];
+function wSyncCats(){
+  // prima volta: parte dalle categorie già usate nei prodotti; poi aggiunge quelle mancanti
+  const used=[...new Set(W.items.map(i=>i.category).filter(Boolean))];
+  const first=!Array.isArray(S.wishCats);
+  const list=first?[]:S.wishCats.slice();
+  const missing=used.filter(c=>!list.some(x=>x.toLowerCase()===c.toLowerCase())).sort((a,b)=>a.localeCompare(b));
+  if(first||missing.length){S.wishCats=list.concat(missing);commit()}
+}
+const wCatExists=n=>wCats().some(c=>c.toLowerCase()===n.toLowerCase());
+function openWishCats(){
+  const cs=wCats();
+  const cnt=c=>W.items.filter(i=>i.category===c).length;
+  openModal(`${mHead("Categorie della wishlist")}<div class="m-body">
+    <p class="muted" style="margin:0;font-size:13.5px">Sono solo della wishlist, separate da quelle di rate e subscription. Rinominando una categoria si aggiornano anche i suoi prodotti.</p>
+    <form class="wl-catadd" data-form="wCatAdd"><input type="text" id="wNewCat" maxlength="40" placeholder="Nuova categoria, es. Regali" autocomplete="off"><button class="btn primary" type="submit">${ico("plus")} Aggiungi</button></form>
+    <div class="err" id="wcErr" hidden></div>
+    ${cs.length?`<ul class="wl-catlist">${cs.map((c,k)=>`<li>
+      <span class="wl-catord"><button type="button" class="icon-btn" data-act="wCatMove" data-k="${k}" data-d="-1" ${k===0?"disabled":""} aria-label="Sposta su">${ico("chevU")}</button><button type="button" class="icon-btn" data-act="wCatMove" data-k="${k}" data-d="1" ${k===cs.length-1?"disabled":""} aria-label="Sposta giù">${ico("chevD")}</button></span>
+      <input type="text" value="${esc(c)}" maxlength="40" data-wcat="${k}" aria-label="Nome categoria">
+      <span class="muted wl-catn">${cnt(c)===1?"1 prodotto":cnt(c)+" prodotti"}</span>
+      <button type="button" class="icon-btn wl-catdel" data-act="wCatDel" data-k="${k}" aria-label="Elimina categoria" title="Elimina categoria">${ico("trash")}</button></li>`).join("")}</ul>`
+      :emptyBox("Nessuna categoria","Creane una qui sopra, ad esempio Tecnologia, Abbigliamento o Regali.")}
+  </div><div class="m-foot"><button class="btn primary" data-act="close">Fatto</button></div>`);
+  const n=document.getElementById("wNewCat");if(n)n.focus();
+}
+function wCatErr(m){const e=document.getElementById("wcErr");if(e){e.textContent=m;e.hidden=!m}}
+function wCatAdd(){
+  const v=(document.getElementById("wNewCat").value||"").trim();
+  if(!v)return;if(wCatExists(v))return wCatErr("Esiste già una categoria con questo nome.");
+  S.wishCats=wCats().concat(v);commit(`Categoria «${v}» creata`);openWishCats();
+}
+async function wCatRename(k,v){
+  const old=wCats()[k];v=(v||"").trim();
+  if(old==null||v===old)return;
+  if(!v){openWishCats();return wCatErr("Il nome non può essere vuoto.")}
+  if(wCats().some((c,j)=>j!==k&&c.toLowerCase()===v.toLowerCase())){openWishCats();return wCatErr("Esiste già una categoria con questo nome.")}
+  const{error}=await sb.from("wishlist_items").update({category:v}).eq("category",old);
+  if(error){openWishCats();return wCatErr(netErr(error)?"Connessione assente: riprova.":error.message)}
+  const l=wCats().slice();l[k]=v;S.wishCats=l;if(W.cat===old)W.cat=v;
+  W.items.forEach(i=>{if(i.category===old)i.category=v});
+  commit(`Rinominata in «${v}»`);openWishCats();
+}
+function wCatMove(k,d){const l=wCats().slice(),j=k+d;if(j<0||j>=l.length)return;[l[k],l[j]]=[l[j],l[k]];S.wishCats=l;commit();openWishCats()}
+async function wCatDel(btn){
+  const k=+btn.dataset.k,c=wCats()[k];if(c==null)return;
+  const n=W.items.filter(i=>i.category===c).length;
+  if(!btn.classList.contains("confirm")){btn.classList.add("confirm");btn.innerHTML=n?`Elimina (${n} senza categoria)`:"Elimina?";return}
+  if(n){const{error}=await sb.from("wishlist_items").update({category:null}).eq("category",c);
+    if(error){wCatErr(netErr(error)?"Connessione assente: riprova.":error.message);return}
+    W.items.forEach(i=>{if(i.category===c)i.category=null})}
+  S.wishCats=wCats().filter((_,j)=>j!==k);if(W.cat===c)W.cat="";
+  commit(`Categoria «${c}» eliminata`);openWishCats();
+}
+
 /* ---------- form prodotto ---------- */
 function openWishForm(id){
   W.lastScrape=null;
   const i=id?wFind(id):null;
-  const cats=[...new Set(W.items.map(x=>x.category).filter(Boolean))];
+  const curCat=i?i.category||"":(W.cat&&W.cat!=="__none"?W.cat:"");
+  const catOpts=wCats().concat(curCat&&!wCats().includes(curCat)?[curCat]:[]);
   const sel=(arr,v)=>arr.map(([k,l])=>`<option value="${k}" ${String(v)===String(k)?"selected":""}>${l}</option>`).join("");
   openModal(`${mHead(i?"Modifica prodotto":"Nuovo prodotto")}<form id="wishForm" novalidate><div class="m-body">
    <div class="field"><label for="w_url">Link al prodotto</label>
@@ -1799,7 +1874,10 @@ function openWishForm(id){
     <div class="field full"><label for="w_title">Nome</label><input type="text" id="w_title" name="title" value="${esc(i?i.title:"")}" required maxlength="200" placeholder="Es. AirPods Pro"></div>
     <div class="field full"><label for="w_desc">Descrizione</label><textarea class="wl-ta" id="w_desc" name="description" rows="2" maxlength="600">${esc(i?i.description||"":"")}</textarea></div>
     <div class="field"><label for="w_store">Negozio</label><input type="text" id="w_store" name="store" value="${esc(i?i.store||"":"")}" placeholder="Es. amazon.it"></div>
-    <div class="field"><label for="w_cat">Categoria</label><input type="text" id="w_cat" name="category" list="wCats" value="${esc(i?i.category||"":(W.cat&&W.cat!=="__none"?W.cat:""))}" placeholder="Es. Tecnologia"><datalist id="wCats">${allCats().concat(cats).filter((c,k,a)=>a.indexOf(c)===k).map(c=>`<option value="${esc(c)}">`).join("")}</datalist></div>
+    <div class="field"><label for="w_cat">Categoria</label><select id="w_cat" name="category" data-wnew="1">
+      <option value="">Nessuna categoria</option>${catOpts.map(c=>`<option value="${esc(c)}" ${c===curCat?"selected":""}>${esc(c)}</option>`).join("")}
+      <option value="__new">＋ Nuova categoria…</option></select>
+      <input type="text" id="w_newcat" name="newcat" maxlength="40" placeholder="Nome della nuova categoria" hidden style="margin-top:6px"></div>
     <div class="field"><label for="w_price">Prezzo pieno</label><input type="text" inputmode="decimal" id="w_price" name="price" value="${wIn(i&&i.price)}" placeholder="0,00"></div>
     <div class="field"><label for="w_sale">Prezzo scontato</label><input type="text" inputmode="decimal" id="w_sale" name="sale_price" value="${wIn(i&&i.sale_price)}" placeholder="0,00"></div>
     <div class="field"><label for="w_pct">Sconto %</label><input type="text" inputmode="decimal" id="w_pct" value="${i&&i.discount_pct!=null?wIn(i.discount_pct):""}" placeholder="0"><span class="hint">Scrivi il prezzo scontato oppure la percentuale</span></div>
@@ -1871,8 +1949,9 @@ async function saveWish(form){
   if(g("sale_price")&&sale==null)return err("Prezzo scontato non valido, scrivi ad esempio 99,99.");
   if(price!=null&&sale!=null&&sale>price)return err("Il prezzo scontato è più alto del prezzo pieno.");
   if(g("url")&&!safeUrl(g("url")))return err("Il link deve iniziare con https://");
+  if(g("category")==="__new"&&!g("newcat"))return err("Scrivi il nome della nuova categoria.");
   const row={title:g("title"),description:g("description")||null,url:safeUrl(g("url")),image_url:safeUrl(g("image_url")),store:g("store")||null,
-    category:g("category")||null,priority:+g("priority")||2,price,sale_price:sale};
+    category:g("category")==="__new"?(g("newcat")||null):(g("category")||null),priority:+g("priority")||2,price,sale_price:sale};
   if(prev){row.purchased=!!fd.get("purchased");if(!row.purchased)row.rata_id=null}
   // automatico se il prezzo salvato è quello letto dal sito; se non lo hai cambiato resta com'era
   const ls=W.lastScrape;
@@ -1880,6 +1959,8 @@ async function saveWish(form){
   else if(ls&&ls.url===row.url)row.price_source=ls.price!=null&&(sale===ls.price||price===ls.price)?"auto":"manual";
   else if(prev&&prev.price===price&&prev.sale_price===sale&&prev.url===row.url)row.price_source=prev.price_source||null;
   else row.price_source="manual";   // prezzo scritto a mano: con ↻ si può riprovare a leggerlo dal sito
+  if(row.category){const ex=wCats().find(c=>c.toLowerCase()===row.category.toLowerCase());
+    if(ex)row.category=ex;else{S.wishCats=wCats().concat(row.category);commit()}}
   const btn=document.getElementById("wSave");btn.disabled=true;
   const{error}=prev?await sb.from("wishlist_items").update(row).eq("id",prev.id):await sb.from("wishlist_items").insert(row);
   btn.disabled=false;
@@ -2036,6 +2117,9 @@ document.addEventListener("click",e=>{
     case"wHDel":wHistDelete(b);break;
     case"wAdd":openWishForm();break;case"wEdit":openWishForm(b.dataset.id);break;case"wHist":openWishHist(b.dataset.id);break;
     case"wScrape":wScrape();break;case"wAskDel":wAskDel(b.dataset.id);break;case"wDoDel":wDoDel(b.dataset.id);break;
+    case"wCats":openWishCats();break;
+    case"wCatMove":wCatMove(+b.dataset.k,+b.dataset.d);break;
+    case"wCatDel":wCatDel(b);break;
     case"wCat":W.cat=b.dataset.v||"";render();requestAnimationFrame(()=>{const t=document.querySelector(".wl-tab.on");if(t)t.scrollIntoView({block:"nearest",inline:"center"})});break;
     case"wManual":openWishManual(b.dataset.id);break;
     case"wCheck":{const i=wFind(b.dataset.id);b.disabled=true;b.classList.add("spin");wCheck(i).finally(()=>{b.disabled=false;b.classList.remove("spin")});break}
@@ -2101,6 +2185,8 @@ document.addEventListener("change",e=>{
     if(!v)delete S.income[t.dataset.income];else S.income[t.dataset.income]=Math.round(n*100)/100;
     setTimeout(()=>commit(),0);return}
   if(t.dataset.wf&&t.id!=="w_q"){W[t.dataset.wf]=t.type==="checkbox"?t.checked:t.value;render();return}
+  if(t.dataset.wcat!=null){wCatRename(+t.dataset.wcat,t.value);return}
+  if(t.dataset.wnew){const n=document.getElementById("w_newcat");n.hidden=t.value!=="__new";if(!n.hidden)n.focus();return}
   if(t.dataset.change==="status"){setStatus(t.dataset.key,t.value);return}
   if(t.dataset.change==="freq"){document.getElementById("customWrap").hidden=t.value!=="custom";ratePreview();return}
   if(t.dataset.pf&&t.type!=="search"&&t.type!=="number"){UI.pf[t.dataset.pf]=t.value;render();return}
@@ -2111,6 +2197,7 @@ document.addEventListener("submit",e=>{
   if(f.getAttribute("id")==="itemForm"){saveForm(f);return}
   if(f.getAttribute("id")==="wishForm"){saveWish(f);return}
   if(f.getAttribute("id")==="wManualForm"){saveWishManual();return}
+  if(f.dataset.form==="wCatAdd"){wCatAdd();return}
   if(f.dataset.form==="incOne"){const n=numIn(document.getElementById("incOneVal").value);if(!(n>=0)){toast("Inserisci un importo, ad esempio 1850");return}
     S.income[f.dataset.k]=Math.round(n*100)/100;commit("Stipendio salvato");openIncMonth(f.dataset.k);return}
   if(f.dataset.form==="incFill"){const n=numIn(document.getElementById("incFillVal").value);if(!(n>0)){toast("Inserisci un importo, ad esempio 1850");return}
