@@ -64,7 +64,7 @@ h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:
 .app{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100%}
 .side{position:sticky;top:0;height:100vh;display:flex;flex-direction:column;gap:6px;padding:22px 14px 18px max(14px,env(safe-area-inset-left,0px));border-right:1px solid var(--line);background:var(--surface)}
 .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 18px}
-.brand-mark{width:32px;height:32px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:17px}
+.brand-mark{width:34px;height:34px;flex:none;display:block;object-fit:contain}
 .brand b{font-family:var(--f-display);font-size:17px;font-weight:600;line-height:1.15;min-width:0}
 .nav-item{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:12px;border:0;background:none;color:var(--ink-2);font-weight:500;text-align:left;width:100%}
 .nav-item:hover{background:var(--surface-2);color:var(--ink)}
@@ -548,7 +548,7 @@ textarea.wl-ta{height:auto;min-height:64px;padding:9px 11px;resize:vertical;font
 .auth-art{position:relative;overflow:hidden;background:#2C47D3;color:#fff;padding:40px 48px;display:flex;flex-direction:column;justify-content:space-between;gap:40px;min-height:100vh}
 .auth-art::after{content:"";position:absolute;right:-140px;bottom:-140px;width:420px;height:420px;border-radius:50%;border:70px solid rgba(255,255,255,.06);pointer-events:none}
 .auth-brand{display:flex;align-items:center;gap:10px;font-weight:600;font-size:15px}
-.auth-logo{width:40px;height:40px;border-radius:11px;background:#fff;color:#2C47D3;display:grid;place-items:center;font-family:var(--f-display);font-weight:700;font-size:19px;flex:none}
+.auth-logo{width:60px;height:60px;flex:none;display:block;object-fit:contain;filter:drop-shadow(0 2px 6px rgba(0,0,0,.18))}
 .auth-art h2{font-family:var(--f-body);font-weight:700;font-size:clamp(44px,5vw,66px);line-height:1.02;letter-spacing:-.03em;margin:auto 0;max-width:9ch;position:relative;z-index:1}
 .auth-art p{margin:14px 0 0;color:rgba(255,255,255,.75);font-size:15.5px;line-height:1.55;max-width:36ch}
 .auth-list{display:flex;flex-direction:column;gap:10px;max-width:400px;position:relative;z-index:1}
@@ -604,7 +604,7 @@ textarea.wl-ta{height:auto;min-height:64px;padding:9px 11px;resize:vertical;font
 <body>
 <div class="auth" id="auth" hidden>
   <aside class="auth-art" aria-hidden="true">
-    <span class="auth-logo">T</span>
+    <img class="auth-logo" src="icon-192.png" alt="" width="60" height="60">
     <h2>Track your payments</h2>
   </aside>
   <main class="auth-main">
@@ -977,7 +977,7 @@ const TITLES={dashboard:"Dashboard",rate:"Rate",sub:"Subscription",wishlist:"Wis
 function renderSide(){
   const od=overdueList().length;
   document.getElementById("side").innerHTML=`
-  <div class="brand"><div class="brand-mark">T</div><b>Track your payments</b></div>
+  <div class="brand"><img class="brand-mark" src="icon-192.png" alt="" width="32" height="32"><b>Track your payments</b></div>
   ${NAV.map(([k,l,i])=>`<button class="nav-item ${UI.view===k?"on":""}" data-act="nav" data-v="${k}">${ico(i)}<span>${l}</span>${k==="payments"&&od?`<span class="count">${od}</span>`:""}</button>`).join("")}
   <div class="side-add"><button class="btn primary wide" data-act="add">${ico("plus")} Aggiungi</button></div>
   <div class="side-foot"><span class="dot ${store.mode==="cloud"?"cloud":""}"></span>${store.mode==="cloud"?(store.unsub?"Sincronizzato in tempo reale":"Salvato nel tuo account"):"Salvato su questo dispositivo"}</div>`;
