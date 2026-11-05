@@ -54,3 +54,10 @@ alter table public.wishlist_items add column if not exists price_source text che
 -- se era la più recente, il prodotto torna al prezzo precedente senza creare nuove righe nello storico
 --   public.wishlist_delete_history(hid bigint) returns json   (security invoker, solo utenti loggati)
 --   il trigger wishlist_log_price_after() salta la registrazione se wishlist.skip_log = 'on'
+
+-- acquisto: quando un prodotto diventa "comprato" il trigger wishlist_touch (BEFORE INSERT OR UPDATE)
+-- salva prezzo pagato, prezzo pieno e data, che poi non cambiano più con i prezzi del sito
+alter table public.wishlist_items
+  add column if not exists purchased_at timestamptz,
+  add column if not exists purchase_price numeric(10,2),
+  add column if not exists purchase_full_price numeric(10,2);
