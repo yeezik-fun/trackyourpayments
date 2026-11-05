@@ -737,7 +737,6 @@ async function initCloud(user){
 function applyRemote(r){
   if(!r||!r.data||!(+r.updated_ms>S.updatedAt)||store.timer)return;
   S=normalize(r.data);C=null;lsSet();applyTheme();
-  if(!document.querySelector("#itemForm")&&document.querySelector(".scrim"))closeModal();
   render();toast("Aggiornato da un altro dispositivo");
 }
 // in tempo reale: Supabase avvisa appena l'altro dispositivo salva
@@ -2110,7 +2109,7 @@ async function wBuyPaid(id){closeModal();if(await wMarkBought(id))toast("Segnato
 /* ================= eventi ================= */
 document.addEventListener("click",e=>{
   const b=e.target.closest("[data-act]");if(!b)return;const a=b.dataset.act;
-  if(a==="scrim"){if(e.target===b)closeModal();return}
+  if(a==="scrim")return;   // i riquadri si chiudono solo con X (o con i loro pulsanti), non toccando lo sfondo
   switch(a){
     case"nav":UI.view=b.dataset.v;if(b.dataset.tab){UI.pf.tab=b.dataset.tab}else if(UI.view==="payments"){UI.pf.tab="tutti"}closeModal();UI.search="";render();window.scrollTo(0,0);if(UI.view==="payments")jumpToday();break;
     case"add":if(UI.view==="wishlist"&&!b.dataset.kind&&wOn()){openWishForm();break}openForm(b.dataset.kind||(UI.view==="rate"?"rata":"sub"));break;
@@ -2166,7 +2165,7 @@ document.addEventListener("click",e=>{
   }
 });
 document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"){if(document.querySelector(".scrim"))closeModal();else if(UI.search){UI.search="";renderTop()}}
+  if(e.key==="Escape"){if(!document.querySelector(".scrim")&&UI.search){UI.search="";renderTop()}}
   if((e.key==="Enter"||e.key===" ")&&e.target.matches(".cell")){e.preventDefault();e.target.click()}
 });
 document.addEventListener("input",e=>{
