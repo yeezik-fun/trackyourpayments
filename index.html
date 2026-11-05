@@ -475,6 +475,12 @@ table.inc input{height:34px;max-width:130px;text-align:right;font-variant-numeri
 .wl-src.man{background:#FFC83D;color:#3A2A00}
 .wl-card .ic-foot .btn.sm.ghost{padding:0 7px;min-width:30px}
 .wl-card .ic-foot .btn.sm.primary{padding:0 10px}
+.wl-boughtsec{display:flex;flex-direction:column;gap:12px;margin-top:6px;padding-top:18px;border-top:1px dashed var(--line)}
+.wl-bh{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
+.wl-bh h2{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:600;margin:0}
+.wl-bh h2 .ico{width:19px;height:19px;color:var(--s-paid)}
+.wl-bh h2 b{font-size:12px;background:var(--surface-2);color:var(--muted);border-radius:99px;padding:1px 8px}
+.wl-none{padding:18px;text-align:center;color:var(--muted);font-size:14px}
 .wl-badge.bought{background:var(--s-paid)}
 .wl-bought{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:600;color:var(--s-paid)}
 .wl-bought .ico{width:14px;height:14px}
@@ -1693,7 +1699,7 @@ function applyTheme(){const t=S.settings.theme;if(t==="light"||t==="dark")docume
 // I prodotti stanno nelle tabelle wishlist_items / wishlist_price_history (Supabase),
 // separate da app_state: ogni cambio di prezzo viene registrato nello storico dal database.
 const BF_DATE="2026-11-27",BF_LAST="2026-11-30";   // Black Friday … Cyber Monday
-const W={loaded:false,loading:false,err:"",items:[],hist:{},q:"",cat:"",sort:"pct",showBought:false,busy:false};
+const W={loaded:false,loading:false,err:"",items:[],hist:{},q:"",cat:"",sort:"pct",busy:false};
 const nOrNull=v=>v==null||v===""?null:+v;
 const wEff=o=>o.sale_price!=null?o.sale_price:o.price;           // il prezzo che paghi davvero
 const wNum=v=>{const n=numIn(v);return isFinite(n)&&n>=0?Math.round(n*100)/100:null};
@@ -1746,7 +1752,7 @@ function vWishlist(){
     return `<div class="panel">${W.err?emptyBox("Wishlist non disponibile",esc(W.err),`<button class="btn" data-act="wReload">Riprova</button>`):`<div class="empty">Carico la wishlist…</div>`}</div>`}
   // categorie: schede in alto, "Tutte" mostra i prodotti divisi per categoria
   const NOCAT="__none",catOf=i=>i.category||NOCAT,catName=k=>k===NOCAT?"Senza categoria":k;
-  const vis=W.items.filter(i=>W.showBought||!i.purchased);
+  const vis=W.items;   // le schede contano tutti i prodotti, da prendere e comprati
   const counts={};for(const i of vis)counts[catOf(i)]=(counts[catOf(i)]||0)+1;
   const catKeys=wCats().concat(Object.keys(counts).filter(k=>k!==NOCAT&&!wCats().includes(k))).concat(counts[NOCAT]?[NOCAT]:[]);
   if(W.cat&&!catKeys.includes(W.cat))W.cat="";
@@ -1755,11 +1761,15 @@ function vWishlist(){
   const full=todo.reduce((s,i)=>s+(i.price??i.sale_price??0),0),now=todo.reduce((s,i)=>s+(wEff(i)??0),0);
   const cd=wCountdown();
   const q=W.q.trim().toLowerCase();
-  let list=W.items.filter(i=>(W.showBought||!i.purchased)&&inCat(i)&&(!q||[i.title,i.description,i.store,i.category].some(x=>(x||"").toLowerCase().includes(q))));
+  let list=W.items.filter(i=>inCat(i)&&(!q||[i.title,i.description,i.store,i.category].some(x=>(x||"").toLowerCase().includes(q))));
   const by={pct:(a,b)=>(b.discount_pct??-1)-(a.discount_pct??-1),prio:(a,b)=>a.priority-b.priority||(b.discount_pct??-1)-(a.discount_pct??-1),
     recent:(a,b)=>a.created_at<b.created_at?1:-1,priceAsc:(a,b)=>(wEff(a)??1e12)-(wEff(b)??1e12),priceDesc:(a,b)=>(wEff(b)??-1)-(wEff(a)??-1),
     drop:(a,b)=>((wVar(a)||{}).diff??0)-((wVar(b)||{}).diff??0)}[W.sort]||(()=>0);
-  list.sort((a,b)=>(a.purchased-b.purchased)||by(a,b));
+  list.sort(by);
+  // comprati sempre visibili, in una sezione sotto, dal più recente
+  const bought=list.filter(i=>i.purchased).sort((a,b)=>(b.purchased_at||"")<(a.purchased_at||"")?-1:1);
+  list=list.filter(i=>!i.purchased);
+  const bSave=bought.reduce((t,i)=>t+(wBuyInfo(i).save||0),0),bPaid=bought.reduce((t,i)=>t+(wBuyInfo(i).paid||0),0);
   const opt=(arr,v)=>arr.map(([k,l])=>`<option value="${esc(k)}" ${v===k?"selected":""}>${esc(l)}</option>`).join("");
   return `<div class="grid-4 wl-kpis">
     <div class="kpi hero"><span class="eyebrow">Black Friday</span><span class="val">${cd.v}</span><span class="sub">${cd.s}</span></div>
@@ -1773,12 +1783,16 @@ function vWishlist(){
   <div class="panel wl-bar">
     <input type="search" id="w_q" data-wf="q" placeholder="Cerca nella wishlist…" value="${esc(W.q)}" aria-label="Cerca nella wishlist">
     <select data-wf="sort" aria-label="Ordina">${opt([["pct","Sconto più alto"],["prio","Priorità"],["drop","Calo di prezzo"],["recent","Aggiunti di recente"],["priceAsc","Prezzo crescente"],["priceDesc","Prezzo decrescente"]],W.sort)}</select>
-    <label class="wl-chk"><input type="checkbox" data-wf="showBought" ${W.showBought?"checked":""}> Mostra comprati</label>
     <span style="flex:1"></span>
     <button class="btn" data-act="wRefreshAll" ${W.busy?"disabled":""}>${ico("refresh")} <span id="wRefLbl">Ricontrolla prezzi</span></button></div>
   ${!W.items.length?`<div class="panel">${emptyBox("La wishlist è vuota","Incolla il link di un prodotto: foto, nome e prezzo vengono letti in automatico.",`<button class="btn primary" data-act="wAdd">${ico("plus")} Aggiungi prodotto</button>`)}</div>`
-   :!list.length?`<div class="panel">${W.cat&&!q&&!W.items.some(i=>catOf(i)===W.cat)?emptyBox(`Nessun prodotto in «${esc(catName(W.cat))}»`,"Aggiungi il primo prodotto di questa categoria.",`<button class="btn primary" data-act="wAdd">${ico("plus")} Aggiungi prodotto</button>`):emptyBox("Nessun prodotto","Prova a cambiare ricerca o filtri.")}</div>`
-   :`<div class="cards wl-cards">${list.map(wCard).join("")}</div>`}`;
+   :!list.length&&!bought.length?`<div class="panel">${W.cat&&!q&&!W.items.some(i=>catOf(i)===W.cat)?emptyBox(`Nessun prodotto in «${esc(catName(W.cat))}»`,"Aggiungi il primo prodotto di questa categoria.",`<button class="btn primary" data-act="wAdd">${ico("plus")} Aggiungi prodotto</button>`):emptyBox("Nessun prodotto","Prova a cambiare ricerca o filtri.")}</div>`
+   :`${list.length?`<div class="cards wl-cards">${list.map(wCard).join("")}</div>`
+       :`<div class="panel wl-none">${q?"Nessun prodotto da prendere corrisponde alla ricerca.":"Niente da prendere qui: hai già comprato tutto 🎉"}</div>`}
+     ${bought.length?`<section class="wl-boughtsec">
+       <div class="wl-bh"><h2>${ico("check")} Comprati <b>${bought.length}</b></h2>
+         <span class="muted">pagato ${money(bPaid)}${bSave>0?` · <span class="wl-save">risparmiato ${money(bSave)}</span>`:""}</span></div>
+       <div class="cards wl-cards">${bought.map(wCard).join("")}</div></section>`:""}`}`;
 }
 function wCard(i){
   const v=wVar(i),img=safeUrl(i.image_url),link=safeUrl(i.url),pct=i.discount_pct>0?Math.round(i.discount_pct):0;
