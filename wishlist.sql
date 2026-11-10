@@ -61,3 +61,50 @@ alter table public.wishlist_items
   add column if not exists purchased_at timestamptz,
   add column if not exists purchase_price numeric(10,2),
   add column if not exists purchase_full_price numeric(10,2);
+
+-- ---------- Altri negozi per lo stesso prodotto ----------
+create table if not exists public.wishlist_offers (
+  id uuid primary key default gen_random_uuid(),
+  item_id uuid not null references public.wishlist_items(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  url text not null,
+  store text,
+  price numeric(12,2),
+  sale_price numeric(12,2),
+  price_source text,               -- 'auto' | 'manual' (Amazon sempre a mano)
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+create table if not exists public.wishlist_offer_history (
+  id bigint generated always as identity primary key,
+  offer_id uuid not null references public.wishlist_offers(id) on delete cascade,
+  user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
+  price numeric(12,2),
+  sale_price numeric(12,2),
+  recorded_at timestamptz not null default now()
+);
+alter table public.wishlist_offers enable row level security;
+alter table public.wishlist_offer_history enable row level security;
+create policy "offers owner" on public.wishlist_offers for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+create policy "offer history owner" on public.wishlist_offer_history for all to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+revoke all on public.wishlist_offers, public.wishlist_offer_history from anon;
+grant select, insert, update, delete on public.wishlist_offers to authenticated;
+grant select, insert, delete on public.wishlist_offer_history to authenticated;
+
+create or replace function public.wishlist_offer_touch() returns trigger
+language plpgsql set search_path = '' as $$
+begin new.updated_at := now(); return new; end; $$;
+create or replace function public.wishlist_offer_log() returns trigger
+language plpgsql set search_path = '' as $$
+begin
+  if tg_op = 'INSERT' or new.price is distinct from old.price or new.sale_price is distinct from old.sale_price then
+    insert into public.wishlist_offer_history (offer_id, user_id, price, sale_price) values (new.id, new.user_id, new.price, new.sale_price);
+  end if;
+  return null;
+end; $$;
+create trigger wishlist_offer_touch before update on public.wishlist_offers
+  for each row execute function public.wishlist_offer_touch();
+create trigger wishlist_offer_log after insert or update on public.wishlist_offers
+  for each row execute function public.wishlist_offer_log();

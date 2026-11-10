@@ -475,6 +475,29 @@ table.inc input{height:34px;max-width:130px;text-align:right;font-variant-numeri
 .wl-src.man{background:#FFC83D;color:#3A2A00}
 .wl-card .ic-foot .btn.sm.ghost{padding:0 7px;min-width:30px}
 .wl-card .ic-foot .btn.sm.primary{padding:0 10px}
+.wl-best{display:flex;align-items:center;gap:6px;width:100%;text-align:left;border:1px solid color-mix(in srgb,var(--accent) 30%,var(--line));background:var(--accent-soft);color:var(--ink);border-radius:10px;padding:7px 9px;font-size:12.5px;line-height:1.3;cursor:pointer}
+.wl-best>span{min-width:0;overflow-wrap:anywhere}.wl-best .ico{width:14px;height:14px;flex:none;color:var(--accent)}
+.wl-best.ok{background:color-mix(in srgb,var(--s-paid) 8%,var(--surface));border-color:color-mix(in srgb,var(--s-paid) 30%,var(--line));color:var(--ink-2)}
+.wl-best.ok .ico{color:var(--s-paid)}
+.wl-offs{display:flex;flex-direction:column;gap:6px}
+.wl-off{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.wl-off.main{background:var(--surface-2)}
+.wl-off.best{border-color:color-mix(in srgb,var(--s-paid) 55%,var(--line));box-shadow:inset 3px 0 0 var(--s-paid)}
+.wl-odot{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font-size:11px;font-weight:800}
+.wl-odot.auto{background:#22B35E;color:#fff}.wl-odot.man{background:#FFC83D;color:#3A2A00}
+.wl-ost{display:flex;flex-direction:column;min-width:0;font-size:13.5px}
+.wl-ost b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wl-ost a{color:inherit;text-decoration:none}.wl-ost a .ico{width:12px;height:12px;vertical-align:-1px;color:var(--muted)}
+.wl-ost .muted,.wl-ost .wl-var{font-size:12px}
+.wl-opr{font-weight:700;font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}.wl-opr s{display:block;font-weight:400;font-size:12px;color:var(--muted)}
+.wl-oin{display:flex;gap:6px}
+.wl-oin label{display:flex;flex-direction:column;font-size:11px;color:var(--muted);gap:2px}
+.wl-oin input{width:86px;height:34px;padding:0 8px;font-variant-numeric:tabular-nums}
+.wl-oact{display:flex;align-items:center;gap:4px;justify-content:flex-end}
+.wl-oact .icon-btn{width:32px;height:32px;border-radius:9px;color:var(--muted)}
+.wl-otag{font-size:11px;font-weight:700;color:#167A3E;background:color-mix(in srgb,var(--s-paid) 14%,#fff);border-radius:99px;padding:2px 8px;white-space:nowrap}
+.wl-odel.confirm{width:auto;padding:0 10px;font-size:12.5px;font-weight:700;color:#fff;background:var(--s-over);border-color:var(--s-over)}
+.wl-oadd{display:flex;gap:8px}.wl-oadd input{flex:1;min-width:0}#wOffUrl{height:42px;min-height:42px}
+@media (max-width:560px){.wl-off{grid-template-columns:auto minmax(0,1fr) auto}.wl-off .wl-oin,.wl-off:not(.main) .wl-oact{grid-column:1/-1}.wl-off:not(.main) .wl-oact{justify-content:flex-start}.wl-off.main .wl-oact:empty{display:none}.wl-oin input{width:100%}.wl-oin label{flex:1}.wl-oadd{flex-direction:column}}
 .wl-boughtsec{display:flex;flex-direction:column;gap:12px;margin-top:6px;padding-top:18px;border-top:1px dashed var(--line)}
 .wl-bh{display:flex;align-items:baseline;gap:6px 14px;flex-wrap:wrap}
 .wl-bh h2{display:flex;align-items:center;gap:8px;font-size:19px;font-weight:600;margin:0}
@@ -1699,7 +1722,7 @@ function applyTheme(){const t=S.settings.theme;if(t==="light"||t==="dark")docume
 // I prodotti stanno nelle tabelle wishlist_items / wishlist_price_history (Supabase),
 // separate da app_state: ogni cambio di prezzo viene registrato nello storico dal database.
 const BF_DATE="2026-11-27",BF_LAST="2026-11-30";   // Black Friday … Cyber Monday
-const W={loaded:false,loading:false,err:"",items:[],hist:{},q:"",cat:"",sort:"pct",busy:false};
+const W={offers:{},ohist:{},loaded:false,loading:false,err:"",items:[],hist:{},q:"",cat:"",sort:"pct",busy:false};
 const nOrNull=v=>v==null||v===""?null:+v;
 const wEff=o=>o.sale_price!=null?o.sale_price:o.price;           // il prezzo che paghi davvero
 const wNum=v=>{const n=numIn(v);return isFinite(n)&&n>=0?Math.round(n*100)/100:null};
@@ -1719,6 +1742,13 @@ async function loadWish(silent){
       sb.from("wishlist_items").select("*").order("created_at",{ascending:false}),
       sb.from("wishlist_price_history").select("id,item_id,price,sale_price,recorded_at").order("recorded_at",{ascending:true})]);
     if(a.error||b.error)throw(a.error||b.error);
+    // altri negozi (se la tabella non c'è ancora, la wishlist funziona lo stesso)
+    const[c,d]=await Promise.all([
+      sb.from("wishlist_offers").select("*").order("created_at",{ascending:true}),
+      sb.from("wishlist_offer_history").select("offer_id,price,sale_price,recorded_at").order("recorded_at",{ascending:true})]);
+    W.offers={};W.ohist={};
+    if(!c.error)for(const o of c.data){Object.assign(o,{price:nOrNull(o.price),sale_price:nOrNull(o.sale_price)});(W.offers[o.item_id]||(W.offers[o.item_id]=[])).push(o)}
+    if(!d.error)for(const r of d.data)(W.ohist[r.offer_id]||(W.ohist[r.offer_id]=[])).push({price:nOrNull(r.price),sale_price:nOrNull(r.sale_price)});
     W.items=a.data.map(r=>Object.assign(r,{purchase_price:nOrNull(r.purchase_price),purchase_full_price:nOrNull(r.purchase_full_price),price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),discount:nOrNull(r.discount),discount_pct:nOrNull(r.discount_pct)}));
     W.hist={};for(const r of b.data)(W.hist[r.item_id]||(W.hist[r.item_id]=[])).push({id:r.id,price:nOrNull(r.price),sale_price:nOrNull(r.sale_price),recorded_at:r.recorded_at});
     W.loaded=true;W.err="";wSyncCats();
@@ -1758,7 +1788,7 @@ function vWishlist(){
   if(W.cat&&!catKeys.includes(W.cat))W.cat="";
   const inCat=i=>!W.cat||catOf(i)===W.cat;
   const todo=W.items.filter(i=>!i.purchased&&inCat(i));
-  const full=todo.reduce((s,i)=>s+(i.price??i.sale_price??0),0),now=todo.reduce((s,i)=>s+(wEff(i)??0),0);
+  const full=todo.reduce((s,i)=>s+(i.price??i.sale_price??0),0),now=todo.reduce((s,i)=>s+(wBestPrice(i)??0),0);
   const cd=wCountdown();
   const q=W.q.trim().toLowerCase();
   let list=W.items.filter(i=>inCat(i)&&(!q||[i.title,i.description,i.store,i.category].some(x=>(x||"").toLowerCase().includes(q))));
@@ -1774,7 +1804,7 @@ function vWishlist(){
   return `<div class="grid-4 wl-kpis">
     <div class="kpi hero"><span class="eyebrow">Black Friday</span><span class="val">${cd.v}</span><span class="sub">${cd.s}</span></div>
     <div class="kpi"><span class="eyebrow">Prezzo pieno</span><span class="val">${money(full)}</span><span class="sub">${todo.length===1?"1 prodotto da prendere":todo.length+" prodotti da prendere"}${W.cat?" in "+esc(catName(W.cat)):""}</span></div>
-    <div class="kpi"><span class="eyebrow">Con gli sconti</span><span class="val">${money(now)}</span><span class="sub">quanto pagheresti oggi</span></div>
+    <div class="kpi"><span class="eyebrow">Con gli sconti</span><span class="val">${money(now)}</span><span class="sub">al prezzo migliore tra i negozi</span></div>
     <div class="kpi"><span class="eyebrow">Risparmio</span><span class="val wl-green">${money(full-now)}</span><span class="sub">${full>0&&full>now?`il ${Math.round((full-now)/full*100)}% in meno`:full>0?"ancora nessuno sconto":"aggiungi i prezzi"}</span></div></div>
   ${W.items.length||catKeys.length?`<div class="wl-tabs" role="tablist" aria-label="Categorie">
     <button class="wl-tab ${!W.cat?"on":""}" data-act="wCat" data-v="" role="tab" aria-selected="${!W.cat}">Tutte <b>${vis.length}</b></button>
@@ -1812,6 +1842,9 @@ function wCard(i){
        return `<div class="wl-prices"><span class="ic-price">${wEff(i)!=null?money(wEff(i)):"—"}</span>
        ${i.sale_price!=null&&i.price!=null&&i.sale_price!==i.price?`<span class="wl-was">${money(i.price)}</span>`:""}
        ${i.discount>0?`<span class="wl-save">risparmi ${money(i.discount)}</span>`:""}</div>
+     ${(()=>{const n=wOffers(i.id).length;if(!n)return"";const b=wBest(i);if(!b)return"";
+       return b.main||b.price===wEff(i)?`<button class="wl-best ok" data-act="wEdit" data-id="${i.id}">${ico("check")}<span>Prezzo più basso qui · confrontato con ${n===1?"1 altro negozio":n+" altri negozi"}</span></button>`
+         :`<button class="wl-best" data-act="wEdit" data-id="${i.id}">${ico("trend")}<span>Più basso su <b>${esc(b.store)}</b>: <b>${money(b.price)}</b> · ${n+1} negozi</span></button>`})()}
      ${varH}${wSpark(i)}</div>`})()}
    <div class="ic-foot">
      ${i.purchased?(rata?`<button class="btn sm" data-act="wRata" data-id="${esc(rata.id)}">${ico("rate")} Vedi la rata</button>`:"")
@@ -1823,6 +1856,95 @@ function wCard(i){
      <button class="btn sm ghost" data-act="wHist" data-id="${i.id}" aria-label="Storico prezzi" title="Storico prezzi">${ico("trend")}</button>
      <button class="btn sm ghost" data-act="wEdit" data-id="${i.id}" aria-label="Modifica ${esc(i.title)}" title="Modifica">${ico("edit")}</button></div>
   </article>`;
+}
+
+/* ---------- altri negozi per lo stesso prodotto ---------- */
+const wOffers=id=>W.offers[id]||[];
+const hostOf=u=>{try{return new URL(u).hostname.replace(/^www\./,"")}catch(e){return""}};
+// prezzo più basso tra il negozio principale e gli altri
+function wBest(i){
+  const all=[];
+  if(wEff(i)!=null)all.push({price:wEff(i),store:i.store||hostOf(i.url)||"negozio principale",url:i.url,main:true});
+  for(const o of wOffers(i.id))if(wEff(o)!=null)all.push({price:wEff(o),store:o.store||hostOf(o.url),url:o.url,main:false,id:o.id});
+  if(!all.length)return null;
+  all.sort((a,b)=>a.price-b.price||(b.main-a.main));
+  return Object.assign({count:wOffers(i.id).length+1},all[0]);
+}
+const wBestPrice=i=>{const b=wBest(i);return b?b.price:null};
+function wOffVar(o){const h=W.ohist[o.id]||[];if(h.length<2)return null;const c=wEff(h[h.length-1]),p=wEff(h[h.length-2]);if(c==null||p==null||c===p)return null;return Math.round((c-p)*100)/100}
+function wOffersHTML(id){
+  const i=wFind(id);if(!i)return"";
+  const offs=wOffers(id),best=wBest(i);
+  const isBest=(price,main,oid)=>best&&price!=null&&price===best.price&&(main?best.main:best.id===oid);
+  const dot=src=>src==="auto"?`<span class="wl-odot auto" title="Prezzo automatico">A</span>`:`<span class="wl-odot man" title="Prezzo manuale">M</span>`;
+  const mainRow=`<div class="wl-off main${isBest(wEff(i),true)&&offs.length?" best":""}">
+     ${dot(wSrc(i))}<div class="wl-ost"><b>${esc(i.store||hostOf(i.url)||"Negozio principale")}</b><span class="muted">principale · si modifica qui sopra</span></div>
+     <div class="wl-opr">${wEff(i)!=null?money(wEff(i)):"—"}${i.sale_price!=null&&i.price!=null&&i.sale_price<i.price?`<s>${money(i.price)}</s>`:""}</div>
+     <div class="wl-oact">${isBest(wEff(i),true)&&offs.length?`<span class="wl-otag">più basso</span>`:""}</div></div>`;
+  const rows=offs.map(o=>{const v=wOffVar(o),amz=isAmz(o.url),link=safeUrl(o.url);
+    return `<div class="wl-off${isBest(wEff(o),false,o.id)?" best":""}">
+     ${dot(amz?"manual":(o.price_source||"auto"))}
+     <div class="wl-ost"><b>${link?`<a href="${esc(link)}" target="_blank" rel="noopener noreferrer">${esc(o.store||hostOf(o.url))} ${ico("ext")}</a>`:esc(o.store||"")}</b>
+       ${v?`<span class="wl-var ${v<0?"down":"up"}">${v<0?"▼":"▲"} ${money(Math.abs(v))}</span>`:`<span class="muted">${amz?"Amazon: prezzo a mano":o.price_source==="manual"?"prezzo a mano":"controllato in automatico"}</span>`}</div>
+     <div class="wl-oin"><label>Pieno<input type="text" inputmode="decimal" data-off="${o.id}" data-f="price" value="${wIn(o.price)}" placeholder="0,00"></label>
+       <label>Scontato<input type="text" inputmode="decimal" data-off="${o.id}" data-f="sale" value="${wIn(o.sale_price)}" placeholder="—"></label></div>
+     <div class="wl-oact">${isBest(wEff(o),false,o.id)?`<span class="wl-otag">più basso</span>`:""}
+       ${!amz?`<button type="button" class="icon-btn" data-act="wOffCheck" data-id="${o.id}" title="Ricontrolla il prezzo sul sito" aria-label="Ricontrolla il prezzo">${ico("refresh")}</button>`:""}
+       <button type="button" class="icon-btn wl-odel" data-act="wOffDel" data-id="${o.id}" title="Togli questo negozio" aria-label="Togli questo negozio">${ico("trash")}</button></div></div>`}).join("");
+  return `<div class="wl-offs">${mainRow}${rows}</div>
+    <div class="wl-oadd"><input type="text" inputmode="url" id="wOffUrl" placeholder="Link dello stesso prodotto su un altro negozio" autocomplete="off">
+      <button type="button" class="btn" data-act="wOffAdd" data-item="${esc(id)}" id="wOffBtn">${ico("plus")} Aggiungi negozio</button></div>
+    <div class="wl-msg" id="wOffMsg" hidden></div>`;
+}
+function wOffRefresh(id){const box=document.getElementById("wOffBox");if(box&&box.dataset.item===id){box.innerHTML=wOffersHTML(id);const s=box.closest("details");if(s){const b=s.querySelector("summary b");if(b)b.textContent=wOffers(id).length}}}
+function wOffSay(t,cls){const m=document.getElementById("wOffMsg");if(m){m.textContent=t;m.className="wl-msg "+(cls||"");m.hidden=!t}}
+// prezzo letto dal sito -> pieno/scontato
+function wSplit(d){if(d.price==null)return{price:null,sale_price:null};
+  return d.listPrice!=null&&d.listPrice>d.price?{price:d.listPrice,sale_price:d.price}:{price:d.price,sale_price:null}}
+async function wOffAdd(itemId){
+  const inp=document.getElementById("wOffUrl"),url=safeUrl(inp&&inp.value);
+  if(!url)return wOffSay("Incolla un link valido (deve iniziare con https://).","err");
+  const i=wFind(itemId);if(!i)return;
+  if(i.url&&safeUrl(i.url)===url||wOffers(itemId).some(o=>o.url===url))return wOffSay("Questo link c'è già.","err");
+  const btn=document.getElementById("wOffBtn");btn.disabled=true;btn.textContent="Leggo…";wOffSay("");
+  let row={item_id:itemId,url,store:hostOf(url),price:null,sale_price:null,price_source:"manual"};
+  if(!isAmz(url)){try{const d=await wFetch(url);if(d.store)row.store=d.store;if(d.price!=null)Object.assign(row,wSplit(d),{price_source:"auto"})}catch(e){}}
+  const{error}=await sb.from("wishlist_offers").insert(row);
+  btn.disabled=false;btn.innerHTML=`${ico("plus")} Aggiungi negozio`;
+  if(error)return wOffSay(netErr(error)?"Connessione assente: riprova.":error.message,"err");
+  await loadWish(true);wOffRefresh(itemId);
+  wOffSay(row.price!=null?`${row.store}: ${money(wEff(row))} letto dal sito.`:isAmz(url)?`${row.store} aggiunto: su Amazon scrivi tu il prezzo qui sotto.`:`${row.store} aggiunto, ma il prezzo non si legge: scrivilo tu qui sotto.`,row.price!=null?"ok":"err");
+}
+async function wOffEdit(oid){
+  const get=f=>document.querySelector(`[data-off="${oid}"][data-f="${f}"]`);
+  const pv=get("price").value.trim(),sv=get("sale").value.trim();
+  const p=pv?wNum(pv):null,sp=sv?wNum(sv):null;
+  if((pv&&p==null)||(sv&&sp==null))return wOffSay("Prezzo non valido, scrivi ad esempio 89,99.","err");
+  if(p!=null&&sp!=null&&sp>p)return wOffSay("Il prezzo scontato è più alto del prezzo pieno.","err");
+  const o=Object.values(W.offers).flat().find(x=>x.id===oid);if(!o)return;
+  const upd={price:p!=null?p:sp,sale_price:p!=null?sp:null,price_source:"manual"};
+  if(upd.price===o.price&&upd.sale_price===o.sale_price)return;
+  const{error}=await sb.from("wishlist_offers").update(upd).eq("id",oid);
+  if(error)return wOffSay(netErr(error)?"Connessione assente: riprova.":error.message,"err");
+  await loadWish(true);wOffRefresh(o.item_id);wOffSay(`${o.store}: prezzo salvato.`,"ok");
+}
+async function wOffCheck(o,quiet){
+  if(!o||isAmz(o.url))return"skip";
+  try{const d=await wFetch(o.url);
+    if(d.price==null){if(o.price_source!=="manual")await sb.from("wishlist_offers").update({price_source:"manual"}).eq("id",o.id);return"nf"}
+    const cur=wEff(o),upd={price_source:"auto"};
+    if(d.price!==cur){if(o.price==null||d.price>=o.price){upd.price=d.price;upd.sale_price=null}else upd.sale_price=d.price}
+    if(d.listPrice!=null&&d.listPrice>d.price&&(o.price==null||o.price!==d.listPrice)){upd.price=d.listPrice;upd.sale_price=d.price}
+    const{error}=await sb.from("wishlist_offers").update(upd).eq("id",o.id);if(error)throw error;
+    return upd.price!==undefined||upd.sale_price!==undefined?"changed":"same";
+  }catch(e){return"err"}
+}
+async function wOffDel(btn){
+  if(!btn.classList.contains("confirm")){btn.classList.add("confirm");btn.innerHTML="Togli?";return}
+  const o=Object.values(W.offers).flat().find(x=>x.id===btn.dataset.id);if(!o)return;
+  const{error}=await sb.from("wishlist_offers").delete().eq("id",o.id);
+  if(error)return wOffSay(netErr(error)?"Connessione assente: riprova.":error.message,"err");
+  await loadWish(true);wOffRefresh(o.item_id);wOffSay(`${o.store} tolto.`,"ok");
 }
 
 /* ---------- acquisto: prezzo e sconto restano quelli del giorno in cui l'hai comprato ---------- */
@@ -1927,6 +2049,8 @@ function openWishForm(id){
     <div class="field"><label for="w_pct">Sconto %</label><input type="text" inputmode="decimal" id="w_pct" value="${i&&i.discount_pct!=null?wIn(i.discount_pct):""}" placeholder="0"><span class="hint">Scrivi il prezzo scontato oppure la percentuale</span></div>
     <div class="field"><label for="w_prio">Priorità</label><select id="w_prio" name="priority">${sel([[1,"Alta"],[2,"Media"],[3,"Bassa"]],i?i.priority:2)}</select></div>
     <div class="field full"><div class="wl-calc" id="wCalc"></div></div>
+    ${i&&!i.purchased?`<details class="field full wl-hdet" open><summary>Altri negozi <b>${wOffers(i.id).length}</b></summary><div class="wl-hbox" id="wOffBox" data-item="${esc(i.id)}">${wOffersHTML(i.id)}</div></details>`
+      :!i?`<p class="hint field full" style="margin:0">Dopo aver salvato potrai aggiungere lo stesso prodotto su altri negozi e confrontare i prezzi.</p>`:""}
     ${i&&(W.hist[i.id]||[]).length?`<details class="field full wl-hdet"${(W.hist[i.id]||[]).length>1?" open":""}><summary>Cronologia prezzi <b>${(W.hist[i.id]||[]).length}</b></summary><div class="wl-hbox" id="wHistBox" data-item="${esc(i.id)}">${wHistHTML(i.id)}</div></details>`:""}
     ${i?`<div class="field full"><label class="toggle-box"><span>Già comprato</span><span class="switch"><input type="checkbox" name="purchased" ${i.purchased?"checked":""}><span></span></span></label></div>`:""}
 
@@ -2095,10 +2219,12 @@ async function wCheck(i,quiet){
   }catch(e){if(!quiet)toast(e.message||"Errore");return"err"}
 }
 async function wRefreshAll(){
+  const offs=W.items.filter(i=>!i.purchased).flatMap(i=>wOffers(i.id)).filter(o=>!isAmz(o.url));
   const amz=W.items.filter(i=>i.url&&!i.purchased&&isAmz(i.url)).length;
-  const list=W.items.filter(i=>i.url&&!i.purchased&&!isAmz(i.url));if(!list.length){toast(amz?"I prodotti Amazon si aggiornano a mano con il pulsante €":"Nessun prodotto con link da controllare");return}
+  const list=W.items.filter(i=>i.url&&!i.purchased&&!isAmz(i.url));if(!list.length&&!offs.length){toast(amz?"I prodotti Amazon si aggiornano a mano con il pulsante €":"Nessun prodotto con link da controllare");return}
   if(W.busy)return;W.busy=true;render();let n=0,ch=0;
-  for(const i of list){const l=document.getElementById("wRefLbl");if(l)l.textContent=`${++n} di ${list.length}…`;if(await wCheck(i,true)==="changed")ch++}
+  for(const i of list){const l=document.getElementById("wRefLbl");if(l)l.textContent=`${++n} di ${list.length+offs.length}…`;if(await wCheck(i,true)==="changed")ch++}
+  for(const o of offs){const l=document.getElementById("wRefLbl");if(l)l.textContent=`${++n} di ${list.length+offs.length}…`;if(await wOffCheck(o,true)==="changed")ch++}
   W.busy=false;toast((ch?(ch===1?"1 prezzo aggiornato":`${ch} prezzi aggiornati`):"Nessun cambio di prezzo")+(amz?` · ${amz} Amazon da aggiornare a mano`:""));loadWish(true);
 }
 
@@ -2166,6 +2292,10 @@ document.addEventListener("click",e=>{
   switch(a){
     case"nav":UI.view=b.dataset.v;if(b.dataset.tab){UI.pf.tab=b.dataset.tab}else if(UI.view==="payments"){UI.pf.tab="tutti"}closeModal();UI.search="";render();window.scrollTo(0,0);if(UI.view==="payments")jumpToday();break;
     case"add":if(UI.view==="wishlist"&&!b.dataset.kind&&wOn()){openWishForm();break}openForm(b.dataset.kind||(UI.view==="rate"?"rata":"sub"));break;
+    case"wOffAdd":wOffAdd(b.dataset.item);break;
+    case"wOffDel":wOffDel(b);break;
+    case"wOffCheck":{const o=Object.values(W.offers).flat().find(x=>x.id===b.dataset.id);if(!o)break;b.disabled=true;b.classList.add("spin");
+      wOffCheck(o).then(async r=>{await loadWish(true);wOffRefresh(o.item_id);wOffSay(r==="changed"?`${o.store}: prezzo aggiornato.`:r==="same"?`${o.store}: prezzo invariato.`:r==="nf"?`${o.store}: il prezzo non si legge, scrivilo tu.`:"Non riesco ad aprire la pagina.",r==="changed"||r==="same"?"ok":"err")});break}
     case"wHDel":wHistDelete(b);break;
     case"wAdd":openWishForm();break;case"wEdit":openWishForm(b.dataset.id);break;case"wHist":openWishHist(b.dataset.id);break;
     case"wScrape":wScrape();break;case"wAskDel":wAskDel(b.dataset.id);break;case"wDoDel":wDoDel(b.dataset.id);break;
@@ -2237,6 +2367,7 @@ document.addEventListener("change",e=>{
     if(!v)delete S.income[t.dataset.income];else S.income[t.dataset.income]=Math.round(n*100)/100;
     setTimeout(()=>commit(),0);return}
   if(t.dataset.wf&&t.id!=="w_q"){W[t.dataset.wf]=t.type==="checkbox"?t.checked:t.value;render();return}
+  if(t.dataset.off){wOffEdit(t.dataset.off);return}
   if(t.dataset.wcat!=null){wCatRename(+t.dataset.wcat,t.value);return}
   if(t.dataset.wnew){const n=document.getElementById("w_newcat");n.hidden=t.value!=="__new";if(!n.hidden)n.focus();return}
   if(t.dataset.change==="status"){setStatus(t.dataset.key,t.value);return}
@@ -2260,6 +2391,10 @@ document.addEventListener("submit",e=>{
 });
 document.addEventListener("click",e=>{if(UI.search&&!e.target.closest("#searchBox")){UI.search="";const i=document.getElementById("gsearch");if(i)i.value="";renderResults()}},true);
 
+// Invio dentro "Altri negozi": non salva tutto il modulo
+document.addEventListener("keydown",e=>{if(e.key!=="Enter")return;const t=e.target;
+  if(t&&t.id==="wOffUrl"){e.preventDefault();const b=document.getElementById("wOffBtn");if(b)b.click()}
+  else if(t&&t.dataset&&t.dataset.off){e.preventDefault();t.blur()}},true);
 document.addEventListener("error",e=>{const t=e.target;if(t&&t.dataset&&t.dataset.wimg){const s=document.createElement("span");s.className="wl-ph";s.innerHTML=ico("gift");t.replaceWith(s)}},true);
 /* ================= avvio ================= */
 S=normalize(lsGet()||blankState());

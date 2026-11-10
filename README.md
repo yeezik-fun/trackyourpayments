@@ -60,4 +60,6 @@ Nel menu c'è la sezione **Wishlist** per i prodotti da prendere (pensata per il
 - «Ricontrolla prezzi» rilegge i prezzi dai siti (tutti tranne Amazon).
 - **Comprato → L'ho preso a rate** apre una nuova rata già compilata con nome, prezzo e PayPal/Amazon; quando la salvi il prodotto viene segnato come comprato e collegato alla rata («Vedi la rata»).
 
-I prodotti stanno nelle tabelle `wishlist_items` e `wishlist_price_history`, separate da `app_state`, nello stesso progetto Supabase.
+- **Altri negozi:** nel modulo «Modifica» di un prodotto, sezione «Altri negozi», incolli il link dello stesso prodotto su un altro e-commerce. Il prezzo viene letto e ricontrollato in automatico (pallino verde A); per Amazon lo scrivi tu (pallino giallo M). Il negozio più conveniente ha l'etichetta «più basso», la scheda mostra dove costa meno e il riepilogo «Con gli sconti» usa il prezzo migliore. «Ricontrolla prezzi» aggiorna anche questi negozi.
+
+I prodotti stanno nelle tabelle `wishlist_items`, `wishlist_price_history`, `wishlist_offers` e `wishlist_offer_history`, separate da `app_state`, nello stesso progetto Supabase.
