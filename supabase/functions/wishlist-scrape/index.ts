@@ -225,6 +225,15 @@ Deno.serve(async (req) => {
     return json({ ...a, image: absolute(a.image, finalUrl), ...(DBG ? { _debug: { ...DBG, status: pg.status, len: pg.html.length } } : {}) });
   }
 
+  // negozi che bloccano i programmi (pagina «accesso negato», verifica anti-robot): niente nome falso, solo un avviso
+  const pageTitle0 = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "");
+  if ([401, 403, 429, 503].includes(page.status) && !/application\/ld\+json|og:title/i.test(html) ||
+      /accesso non consentito|access (forbidden|denied)|^403\b|attention required|just a moment|captcha|are you a robot|verifica che tu sia/i.test(pageTitle0)) {
+    const store = host.replace(/^www\./, "");
+    return json({ image: null, title: null, description: null, price: null, store, blocked: true,
+      note: `${store} blocca la lettura automatica: scrivi tu il prezzo, lo trovi sul sito.` });
+  }
+
   const product = jsonLdProduct(html);
   let image = meta(html, ["og:image:secure_url", "og:image", "twitter:image", "twitter:image:src", "image"]);
   if (!image && product?.image) {

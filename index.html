@@ -1907,13 +1907,13 @@ async function wOffAdd(itemId){
   const i=wFind(itemId);if(!i)return;
   if(i.url&&safeUrl(i.url)===url||wOffers(itemId).some(o=>o.url===url))return wOffSay("Questo link c'è già.","err");
   const btn=document.getElementById("wOffBtn");btn.disabled=true;btn.textContent="Leggo…";wOffSay("");
-  let row={item_id:itemId,url,store:hostOf(url),price:null,sale_price:null,price_source:"manual"};
-  if(!isAmz(url)){try{const d=await wFetch(url);if(d.store)row.store=d.store;if(d.price!=null)Object.assign(row,wSplit(d),{price_source:"auto"})}catch(e){}}
-  const{error}=await sb.from("wishlist_offers").insert(row);
+  let row={item_id:itemId,url,store:hostOf(url),price:null,sale_price:null,price_source:"manual"};const ins=()=>{const{blocked,...x}=row;return x};
+  if(!isAmz(url)){try{const d=await wFetch(url);if(d.store)row.store=d.store;if(d.price!=null)Object.assign(row,wSplit(d),{price_source:"auto"});else if(d.blocked)row.blocked=true}catch(e){}}
+  const{error}=await sb.from("wishlist_offers").insert(ins());
   btn.disabled=false;btn.innerHTML=`${ico("plus")} Aggiungi negozio`;
   if(error)return wOffSay(netErr(error)?"Connessione assente: riprova.":error.message,"err");
   await loadWish(true);wOffRefresh(itemId);
-  wOffSay(row.price!=null?`${row.store}: ${money(wEff(row))} letto dal sito.`:isAmz(url)?`${row.store} aggiunto: su Amazon scrivi tu il prezzo qui sotto.`:`${row.store} aggiunto, ma il prezzo non si legge: scrivilo tu qui sotto.`,row.price!=null?"ok":"err");
+  wOffSay(row.price!=null?`${row.store}: ${money(wEff(row))} letto dal sito.`:isAmz(url)?`${row.store} aggiunto: su Amazon scrivi tu il prezzo qui sotto.`:row.blocked?`${row.store} aggiunto. Questo sito blocca la lettura automatica: scrivi tu il prezzo qui sotto.`:`${row.store} aggiunto, ma il prezzo non si legge: scrivilo tu qui sotto.`,row.price!=null?"ok":"err");
 }
 async function wOffEdit(oid){
   const get=f=>document.querySelector(`[data-off="${oid}"][data-f="${f}"]`);
